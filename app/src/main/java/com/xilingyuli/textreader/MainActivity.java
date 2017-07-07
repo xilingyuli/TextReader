@@ -1,9 +1,14 @@
 package com.xilingyuli.textreader;
 
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -16,17 +21,21 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.xilingyuli.textreader.utils.FileUtil;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import cn.qqtheme.framework.picker.FilePicker;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static final int CHOOSE_BOOKS_DIR = 571;
 
     @BindView(R.id.toolbar)
     Toolbar toolbar;
@@ -35,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.empty_text)
     TextView emptyText;
 
+    SharedPreferences sharedPreferences;
     List<String[]> data = new ArrayList<>();
 
     @Override
@@ -43,33 +53,52 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
+        sharedPreferences = getSharedPreferences("booklist",MODE_PRIVATE);
+
         setSupportActionBar(toolbar);
 
         recyclerView.setLayoutManager(new GridLayoutManager(this,3));
         recyclerView.setAdapter(new BookGridAdapter());
 
-        getBookList("");
+        FileUtil.saveFile("test3.txt",
+                "a\nb\nc\nd\ne\nf\n" +
+                "a\nb\nc\nd\ne\nf\n" +
+                "a\nb\nc\nd\ne\nf\n" +
+                "a\nb\nc\nd\ne\nf\n" +
+                "a\nb\nc\nd\ne\nf\n" +
+                "a\nb\nc\nd\ne\nf\n" +
+                "a\nb\nc\nd\ne\nf\n");
+
+        getBookList();
     }
 
-    public void getBookList(String path){
-        //TODO
+    public void getBookList(){
+        data.clear();
+        for(Map.Entry<String, ?> entry:sharedPreferences.getAll().entrySet())
+            data.add(new String[]{(String)entry.getValue(),entry.getKey()});
+        recyclerView.getAdapter().notifyDataSetChanged();
         recyclerView.setVisibility(data.size()==0?View.GONE:View.VISIBLE);
         emptyText.setVisibility(data.size()==0?View.VISIBLE:View.GONE);
     }
 
     @OnClick(R.id.fab)
     public void addBooks(){
-        Intent intent = new Intent();
-        //TODO
-        startActivityForResult(intent,CHOOSE_BOOKS_DIR);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode==CHOOSE_BOOKS_DIR&&resultCode==RESULT_OK){
-            getBookList(data.getStringExtra("path"));
-        }
+        FileUtil.requestWritePermission(this);
+        FilePicker filePicker = new FilePicker(this,FilePicker.DIRECTORY);
+        filePicker.setRootPath(FileUtil.ROOT_PATH);
+        filePicker.getAdapter().setOnlyListDir(false);
+        filePicker.setAllowExtensions(new String[]{"txt"});
+        filePicker.setOnFilePickListener(currentPath -> {
+            File[] files = FileUtil.listTxts(currentPath);
+            if(files==null)
+                return;
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            for(File f : files)
+                editor.putString(f.getPath(),f.getName().replace(".txt",""));
+            editor.commit();
+            getBookList();
+        });
+        filePicker.show();
     }
 
     @Override
@@ -87,7 +116,24 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        //delete books
+        if (id == R.id.action_delete) {
+            String[] bookNames = new String[data.size()];
+            boolean[] choosed = new boolean[bookNames.length];
+            for(int i=0;i<data.size();i++)
+                bookNames[i] = data.get(i)[0];
+            new AlertDialog.Builder(this)
+                    .setMultiChoiceItems(bookNames, choosed, (dialogInterface, i, b) -> choosed[i] = b)
+                    .setPositiveButton("delete", (dialogInterface, index) -> {
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        for(int i=0;i<choosed.length;i++)
+                            if(choosed[i])
+                                editor.remove(data.get(i)[1]);
+                        editor.commit();
+                        getBookList();
+                    })
+                    .setNegativeButton("cancel",null)
+                    .show();
             return true;
         }
 
@@ -124,13 +170,11 @@ public class MainActivity extends AppCompatActivity {
         public void onBindViewHolder(final ViewHolder viewHolder, final int i)
         {
             viewHolder.textView.setText(data.get(i)[0]);
-            viewHolder.imageView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    Intent intent = new Intent(MainActivity.this, ReadTextActivity.class);
-                    intent.putExtra("path",data.get(i)[1]);
-                    startActivity(intent);
-                }
+            viewHolder.imageView.setOnClickListener(view -> {
+                Intent intent = new Intent(MainActivity.this, ReadTextActivity.class);
+                intent.putExtra("name",data.get(i)[0]);
+                intent.putExtra("path",data.get(i)[1]);
+                startActivity(intent);
             });
         }
 
