@@ -41,4 +41,7 @@ dependencies {
     compile('cn.qqtheme.framework:FilePicker:1.5.1') {
         exclude group: 'com.android.support'
     }
+    compile('cn.qqtheme.framework:ColorPicker:1.5.1') {
+        exclude group: 'com.android.support'
+    }
 }

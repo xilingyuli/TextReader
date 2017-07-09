@@ -70,7 +70,7 @@ public class FileUtil {
             fis = new FileInputStream(path);
             buffer = new byte[fis.available()];
             fis.read(buffer);
-            return new String(buffer);
+            return new String(buffer,"gbk");
         }catch (Exception e)
         {
             e.printStackTrace();

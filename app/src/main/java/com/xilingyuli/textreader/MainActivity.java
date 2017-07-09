@@ -60,15 +60,6 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this,3));
         recyclerView.setAdapter(new BookGridAdapter());
 
-        FileUtil.saveFile("test3.txt",
-                "a\nb\nc\nd\ne\nf\n" +
-                "a\nb\nc\nd\ne\nf\n" +
-                "a\nb\nc\nd\ne\nf\n" +
-                "a\nb\nc\nd\ne\nf\n" +
-                "a\nb\nc\nd\ne\nf\n" +
-                "a\nb\nc\nd\ne\nf\n" +
-                "a\nb\nc\nd\ne\nf\n");
-
         getBookList();
     }
 
@@ -118,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
         //noinspection SimplifiableIfStatement
         //delete books
         if (id == R.id.action_delete) {
+            if(data.size()==0)
+                return true;
             String[] bookNames = new String[data.size()];
             boolean[] choosed = new boolean[bookNames.length];
             for(int i=0;i<data.size();i++)

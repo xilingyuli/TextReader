@@ -1,0 +1,25 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.xilingyuli.textreader.MainActivity" >
+    <item android:id="@+id/action_front_size"
+        android:title="front_size"
+        android:icon="@drawable/ic_format_size_white_24dp"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+    <item android:id="@+id/action_front_color"
+        android:title="front_color"
+        android:icon="@drawable/ic_format_color_text_white_24dp"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+    <item android:id="@+id/action_back_color"
+        android:title="back_color"
+        android:icon="@drawable/ic_color_lens_white_24dp"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+    <item android:id="@+id/action_mark"
+        android:title="book_mark"
+        android:icon="@drawable/ic_bookmark_border_white_24dp"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
+</menu>
