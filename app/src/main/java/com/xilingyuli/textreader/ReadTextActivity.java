@@ -7,12 +7,15 @@ import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.xilingyuli.textreader.utils.FileUtil;
 
@@ -31,11 +34,14 @@ public class ReadTextActivity extends AppCompatActivity {
     Toolbar toolbar;
     @BindView(R.id.text_view)
     TextView textView;
+    @BindView(R.id.page)
+    TextView pageView;
 
     String name;
     String path;
     String text;
     String[] pages;
+    int currentChar;
     int currentPage;
 
     SharedPreferences setting,mark;
@@ -55,45 +61,50 @@ public class ReadTextActivity extends AppCompatActivity {
         setting = getSharedPreferences("settings",MODE_PRIVATE);
         mark = getSharedPreferences(path.replace("/","_"),MODE_PRIVATE);
 
-        currentPage = setting.getInt("CurrentPage",0);
+        currentChar = setting.getInt("CurrentChar",0);
         divideText(text,setting.getInt("FrontSize",16));
-
     }
 
     private void divideText(String text, int size){
+        if(text==null||text.isEmpty())
+            return;
         textView.setTextSize(size);
         textView.setText(text);
-        textView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                int lineNum = textView.getHeight()/textView.getLineHeight();
-                int index = 0;
-                int temp,i=0;
-                List<String> pages = new ArrayList<>();
-                while ((i+1)*lineNum<textView.getLineCount()){
+        textView.post(() -> {
+            int lineNum = textView.getHeight()/textView.getLineHeight();
+            int index = 0;
+            int temp,i=0;
+            List<String> pages1 = new ArrayList<>();
+            try {
+                while (index<text.length()){
                     temp = textView.getLayout().getLineStart((++i)*lineNum);
-                    pages.add(text.substring(index,temp));
+                    pages1.add(text.substring(index,temp));
                     index = temp;
                 }
-                pages.add(text.substring(index));
-                ReadTextActivity.this.pages = pages.toArray(new String[0]);
-                if(currentPage>=ReadTextActivity.this.pages.length)
-                    currentPage = ReadTextActivity.this.pages.length-1;
-                jumpTo(currentPage);
-                textView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }catch (Exception e){
+                e.printStackTrace();
             }
+            if(index<text.length())
+                pages1.add(text.substring(index));
+            ReadTextActivity.this.pages = pages1.toArray(new String[0]);
+            gotoChar(currentChar);
         });
     }
 
+
     private int getCurrentChar(){
-        int current = 0;
+        currentChar = 0;
         for(int i=0;i<currentPage;i++)
-            current += pages[i].length();
-        return current;
+            currentChar += pages[i].length();
+        return currentChar;
     }
 
     private void gotoChar(int current)
     {
+        if(current<0)
+            current = 0;
+        if(current>=text.length())
+            current = text.length() - 1;
         for(currentPage=0;current>=0;currentPage++){
             current -= pages[currentPage].length();
         }
@@ -102,10 +113,9 @@ public class ReadTextActivity extends AppCompatActivity {
     }
 
     public void changeFrontSize(int size){
+        currentChar = getCurrentChar();
         setting.edit().putInt("FrontSize",size).apply();
-        int current = getCurrentChar();
         divideText(text,size);
-        gotoChar(current);
     }
 
     public void changeFrontColor(@ColorInt int color){
@@ -168,23 +178,29 @@ public class ReadTextActivity extends AppCompatActivity {
     public void nextPage(){
         if(currentPage<pages.length-1)
             jumpTo(++currentPage);
+        else
+            Toast.makeText(this,"已是最后一页",Toast.LENGTH_SHORT).show();
     }
 
     @OnClick(R.id.last)
     public void lastPage(){
         if(currentPage>0)
             jumpTo(--currentPage);
+        else
+            Toast.makeText(this,"已是第一页",Toast.LENGTH_SHORT).show();
     }
 
     public void jumpTo(int index){
-        if(index>=0&&index<pages.length)
+        if(index>=0&&index<pages.length) {
             textView.setText(pages[index]);
+            pageView.setText((index+1)+"/"+pages.length);
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        setting.edit().putInt("CurrentPage",currentPage).apply();
+        setting.edit().putInt("CurrentChar",currentChar).apply();
     }
 
     @Override
