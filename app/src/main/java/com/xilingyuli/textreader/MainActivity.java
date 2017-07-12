@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
@@ -23,9 +24,24 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.tencent.cos.COSClient;
+import com.tencent.cos.model.COSRequest;
+import com.tencent.cos.model.COSResult;
+import com.tencent.cos.model.ListDirRequest;
+import com.tencent.cos.model.ListDirResult;
+import com.tencent.cos.model.PutObjectRequest;
+import com.tencent.cos.model.UpdateObjectRequest;
+import com.tencent.cos.task.listener.ICmdTaskListener;
+import com.tencent.cos.task.listener.ITaskListener;
+import com.tencent.cos.task.listener.IUploadTaskListener;
+import com.xilingyuli.textreader.cos.CloudDataHelper;
+import com.xilingyuli.textreader.cos.CloudDataUtil;
 import com.xilingyuli.textreader.utils.FileUtil;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +50,14 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import cn.qqtheme.framework.picker.FilePicker;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+import static com.xilingyuli.textreader.cos.CloudDataHelper.ACTION_LIST_FILE;
+import static com.xilingyuli.textreader.cos.CloudDataHelper.ACTION_UPLOAD_FILE;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -128,6 +152,102 @@ public class MainActivity extends AppCompatActivity {
                     .setNegativeButton("cancel",null)
                     .show();
             return true;
+        }else if(id == R.id.action_upload){
+            if(data.size()==0)
+                return true;
+            String[] bookNames = new String[data.size()];
+            boolean[] choosed = new boolean[bookNames.length];
+            for(int i=0;i<data.size();i++)
+                bookNames[i] = data.get(i)[0];
+            new AlertDialog.Builder(this)
+                    .setMultiChoiceItems(bookNames, choosed, (dialogInterface, i, b) -> choosed[i] = b)
+                    .setPositiveButton("上传", (dialogInterface, index) -> {
+                        COSClient cosClient = CloudDataUtil.createCOSClient(MainActivity.this);
+                        for(int i=0;i<choosed.length;i++)
+                            if(choosed[i]){
+                                COSRequest request = CloudDataHelper.createCOSRequest(ACTION_UPLOAD_FILE, new IUploadTaskListener() {
+
+                                    @Override
+                                    public void onSuccess(COSRequest cosRequest, COSResult cosResult) {
+                                        MainActivity.this.runOnUiThread(() -> Toast.makeText(MainActivity.this,"上传成功",Toast.LENGTH_SHORT).show());
+                                    }
+
+                                    @Override
+                                    public void onFailed(COSRequest cosRequest, COSResult cosResult) {
+
+                                    }
+
+                                    @Override
+                                    public void onProgress(COSRequest cosRequest, long l, long l1) {
+
+                                    }
+
+                                    @Override
+                                    public void onCancel(COSRequest cosRequest, COSResult cosResult) {
+
+                                    }
+                                }, "test",new File(data.get(i)[1]));
+                                cosClient.putObject((PutObjectRequest) request);
+                            }
+
+                    })
+                    .setNegativeButton("取消",null)
+                    .show();
+            return true;
+        }else if(id == R.id.action_download) {
+            COSClient cosClient = CloudDataUtil.createCOSClient(MainActivity.this);
+            COSRequest request = CloudDataHelper.createCOSRequest(ACTION_LIST_FILE, new ICmdTaskListener() {
+                @Override
+                public void onSuccess(COSRequest cosRequest, COSResult cosResult) {
+                    Gson gson = new Gson();
+                    ListDirResult result = (ListDirResult)cosResult;
+                    List<Map<String, String>> data = gson.fromJson(result.infos.toString(),
+                            new TypeToken<List<Map<String, String>>>(){}.getType());
+                    MainActivity.this.runOnUiThread(()->{
+                        boolean[] choosed = new boolean[data.size()];
+                        String[] names = new String[data.size()];
+                        String[] urls = new String[data.size()];
+                        for(int i=0;i<data.size();i++) {
+                            names[i] = data.get(i).get("name");
+                            urls[i] = data.get(i).get("source_url");
+                        }
+                        new AlertDialog.Builder(MainActivity.this)
+                                .setMultiChoiceItems(names, choosed, (dialogInterface, i, b) -> choosed[i] = b)
+                                .setPositiveButton("下载", (dialogInterface, index) -> {
+                                    OkHttpClient client = new OkHttpClient();
+                                    for(int i=0;i<choosed.length;i++) {
+                                        if(!choosed[i])
+                                            continue;
+                                        Request request1 = new Request.Builder().url(urls[i]).build();
+                                        int finalI = i;
+                                        client.newCall(request1).enqueue(new Callback() {
+                                            @Override
+                                            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+
+                                            }
+
+                                            @Override
+                                            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                                                String content = response.body().string();
+                                                FileUtil.saveFile(names[finalI],content);
+                                                MainActivity.this.runOnUiThread(()->
+                                                        Toast.makeText(MainActivity.this,names[finalI]+"已下载",Toast.LENGTH_SHORT).show());
+                                            }
+                                        });
+                                    }
+                                })
+                                .setNegativeButton("取消",null)
+                                .show();
+
+                    });
+                }
+
+                @Override
+                public void onFailed(COSRequest cosRequest, COSResult cosResult) {
+
+                }
+            },"test","");
+            cosClient.listDir((ListDirRequest)request);
         }
 
         return super.onOptionsItemSelected(item);

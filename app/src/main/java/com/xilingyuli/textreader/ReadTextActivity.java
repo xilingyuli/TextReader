@@ -61,6 +61,8 @@ public class ReadTextActivity extends AppCompatActivity {
         setting = getSharedPreferences("settings",MODE_PRIVATE);
         mark = getSharedPreferences(path.replace("/","_"),MODE_PRIVATE);
 
+        textView.setTextColor(setting.getInt("FrontColor",0x333333));
+        textView.setBackgroundColor(setting.getInt("BackColor",0xffffff));
         currentChar = setting.getInt("CurrentChar",0);
         divideText(text,setting.getInt("FrontSize",16));
     }
@@ -120,10 +122,12 @@ public class ReadTextActivity extends AppCompatActivity {
 
     public void changeFrontColor(@ColorInt int color){
         textView.setTextColor(color);
+        setting.edit().putInt("FrontColor",color).apply();
     }
 
     public void changeBackground(@ColorInt int color){
         textView.setBackgroundColor(color);
+        setting.edit().putInt("BackColor",color).apply();
     }
 
     public void addBookMark(){
@@ -240,16 +244,13 @@ public class ReadTextActivity extends AppCompatActivity {
         }
         else if(id == R.id.action_mark){
             new AlertDialog.Builder(this)
-                    .setItems(new String[]{"添加书签", "选择书签", "删除书签"}, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            if(i==0)
-                                addBookMark();
-                            else if(i==1)
-                                selectBookMark();
-                            else if(i==2)
-                                deleteBookMark();
-                        }
+                    .setItems(new String[]{"添加书签", "选择书签", "删除书签"}, (dialogInterface, i) -> {
+                        if(i==0)
+                            addBookMark();
+                        else if(i==1)
+                            selectBookMark();
+                        else if(i==2)
+                            deleteBookMark();
                     })
                     .show();
         }
