@@ -2,6 +2,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.xilingyuli.textreader.MainActivity" >
+    <item android:id="@+id/action_login"
+        android:title="login"
+        android:icon="@drawable/ic_group_white_24dp"
+        android:orderInCategory="100"
+        app:showAsAction="always" />
     <item android:id="@+id/action_download"
         android:title="download"
         android:icon="@drawable/ic_cloud_download_white_24dp"

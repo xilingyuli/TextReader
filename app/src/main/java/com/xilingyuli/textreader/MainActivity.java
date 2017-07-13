@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
@@ -155,6 +156,10 @@ public class MainActivity extends AppCompatActivity {
         }else if(id == R.id.action_upload){
             if(data.size()==0)
                 return true;
+            if(toolbar.getTitle().equals("TextReader")) {
+                Toast.makeText(this, "you need login!", Toast.LENGTH_SHORT);
+                return true;
+            }
             String[] bookNames = new String[data.size()];
             boolean[] choosed = new boolean[bookNames.length];
             for(int i=0;i<data.size();i++)
@@ -186,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
                                     public void onCancel(COSRequest cosRequest, COSResult cosResult) {
 
                                     }
-                                }, "test",new File(data.get(i)[1]));
+                                }, toolbar.getTitle(),new File(data.get(i)[1]));
                                 cosClient.putObject((PutObjectRequest) request);
                             }
 
@@ -195,6 +200,10 @@ public class MainActivity extends AppCompatActivity {
                     .show();
             return true;
         }else if(id == R.id.action_download) {
+            if(toolbar.getTitle().equals("TextReader")) {
+                Toast.makeText(this, "you need login!", Toast.LENGTH_SHORT);
+                return true;
+            }
             COSClient cosClient = CloudDataUtil.createCOSClient(MainActivity.this);
             COSRequest request = CloudDataHelper.createCOSRequest(ACTION_LIST_FILE, new ICmdTaskListener() {
                 @Override
@@ -246,8 +255,41 @@ public class MainActivity extends AppCompatActivity {
                 public void onFailed(COSRequest cosRequest, COSResult cosResult) {
 
                 }
-            },"test","");
+            },toolbar.getTitle(),"");
             cosClient.listDir((ListDirRequest)request);
+        }else if( id == R.id.action_login){
+            View view = getLayoutInflater().inflate(R.layout.dialog_login,null);
+            EditText userName = view.findViewById(R.id.user_name);
+            EditText password = view.findViewById(R.id.password);
+            new AlertDialog.Builder(this)
+                    .setView(view)
+                    .setNegativeButton("register", (dialogInterface, i) -> {
+                        String u = userName.getText()+"";
+                        String p = password.getText()+"";
+                        if(u.isEmpty()||p.isEmpty())
+                        {
+                            Toast.makeText(MainActivity.this,"username or password can not be empty!",Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        SharedPreferences preferences = getSharedPreferences("user",MODE_PRIVATE);
+                        if(preferences.contains(u))
+                            Toast.makeText(MainActivity.this,"用户名已存在",Toast.LENGTH_SHORT).show();
+                        else {
+                            preferences.edit().putString(u, p).apply();
+                            toolbar.setTitle(u);
+                        }
+                    })
+                    .setPositiveButton("login", (dialogInterface, i) -> {
+                        String u = userName.getText()+"";
+                        String p = password.getText()+"";
+                        SharedPreferences preferences = getSharedPreferences("user",MODE_PRIVATE);
+                        if(!p.isEmpty()&&preferences.getString(u,"").equals(p))
+                            toolbar.setTitle(u);
+                        else
+                            Toast.makeText(MainActivity.this,"username or password is wrong!",Toast.LENGTH_SHORT).show();
+                    })
+                    .setNeutralButton("cancel",null)
+                    .show();
         }
 
         return super.onOptionsItemSelected(item);
